@@ -1,13 +1,14 @@
 import com.mongodb.client.model.Filters
-import com.mongodb.housekeeping.CollectionConfig
-import com.mongodb.housekeeping.Config
-import com.mongodb.housekeeping.HousekeepingWindow
-import com.mongodb.housekeeping.RateConfig
+import com.mongodb.housekeeping.model.CollectionConfig
+import com.mongodb.housekeeping.model.Config
+import com.mongodb.housekeeping.model.RateConfig
+import com.mongodb.housekeeping.model.WindowConfig
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
 
 
 val basicConfig: Config = Config(
+    housekeepingEnabled = false,
     collections = listOf(
         CollectionConfig(
             namespace = "test.a",
@@ -27,8 +28,8 @@ val basicConfig: Config = Config(
             )
         )
     ),
-    window = listOf(
-        HousekeepingWindow(
+    windows = listOf(
+        WindowConfig(
             from = LocalTime(0, 0, 0, 0),
             to = LocalTime(5, 0, 0, 0),
             days = listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)

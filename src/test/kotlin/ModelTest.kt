@@ -1,31 +1,18 @@
-import com.mongodb.housekeeping.Config
-import com.mongodb.housekeeping.HousekeepingWindow
-import com.mongodb.kotlin.client.MongoClient
-import kotlinx.datetime.DayOfWeek
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
+import com.mongodb.housekeeping.model.Config
+import com.mongodb.kotlin.client.coroutine.MongoClient
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 
 class ModelTest {
 
     @Test
-    fun writeConfig() {
+    fun writeConfig(): Unit = runBlocking {
         val client = MongoClient.create()
 
         client
-            .getDatabase("test")
+            .getDatabase("housekeeping")
             .getCollection<Config>("config")
             .insertOne(basicConfig)
-
-//        client.getDatabase("test")
-//            .getCollection<HousekeepingWindow>("window")
-//            .insertOne(
-//                HousekeepingWindow(
-//                    from = LocalTime(0, 0, 0, 0),
-//                    to = LocalTime(5, 0, 0, 0),
-//                    days = listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
-//                )
-//            )
 
     }
 

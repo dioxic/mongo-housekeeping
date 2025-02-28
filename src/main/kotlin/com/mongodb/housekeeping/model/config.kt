@@ -1,4 +1,4 @@
-package com.mongodb.housekeeping
+package com.mongodb.housekeeping.model
 
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
@@ -10,12 +10,13 @@ import org.bson.BsonDocument
 data class Config(
     val collections: List<CollectionConfig>,
     val archiveEnabled: Boolean,
+    val housekeepingEnabled: Boolean,
     val rates: List<RateConfig>,
-    val window: List<HousekeepingWindow>
+    val windows: List<WindowConfig>? = null
 )
 
 @Serializable
-data class HousekeepingWindow(
+data class WindowConfig(
     val from: LocalTime,
     val to: LocalTime,
     val days: List<DayOfWeek>
