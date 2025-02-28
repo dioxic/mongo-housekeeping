@@ -1,0 +1,34 @@
+[versions]
+kotlin = "2.1.10"
+kotlinSerialization = "1.6.0"
+versionsPlugin = "0.52.0"
+mongodb = "5.3.0"
+kotlinCoroutines = "1.10.1"
+slf4j = "2.0.16"
+logback = "1.5.17"
+kotlinLogging = "7.0.4"
+kotlinDatetime = "0.6.2"
+
+[libraries]
+kotlin-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinSerialization" }
+kotlin-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinSerialization" }
+kotlin-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinCoroutines" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinDatetime"}
+
+mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongodb" }
+mongodb-driver-kotlin-sync = { module = "org.mongodb:mongodb-driver-kotlin-sync", version.ref = "mongodb" }
+mongodb-bson-kotlinx = { module ="org.mongodb:bson-kotlinx", version.ref = "mongodb"}
+
+logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+slf4j-kotlin = { module = "io.github.oshai:kotlin-logging-jvm", version.ref="kotlinLogging"}
+
+[bundles]
+slf4j = ["slf4j-api", "logback", "slf4j-kotlin"]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+versions = { id = "com.github.ben-manes.versions", version.ref = "versionsPlugin" }
