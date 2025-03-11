@@ -81,6 +81,16 @@ suspend fun CoroutineScope.housekeepingEnabled(
         Enabled(enabled && rate.value > 0)
     }.stateIn(this)
 
+suspend fun CoroutineScope.enabledAndCfgCombined(
+    cfgState: StateFlow<Config>,
+    enabledState: StateFlow<Enabled>
+) = cfgState
+    .map { it.collections }
+    .distinctUntilChanged()
+    .combine(enabledState) { collCfg, enabled ->
+        collCfg to enabled
+    }.stateIn(this)
+
 suspend fun CoroutineScope.housekeepingState(
     enabled: StateFlow<Enabled>,
     windowState: StateFlow<Window>,
@@ -102,3 +112,18 @@ suspend fun CoroutineScope.housekeepingState(
             lastUpdated = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         )
     }.stateIn(this)
+
+fun <T> Flow<T>.chunked(size: StateFlow<Rate>): Flow<List<T>> {
+    return flow {
+        var result: ArrayList<T>? = null
+        collect { value ->
+            val acc = result ?: ArrayList<T>(size.value.value).also { result = it }
+            acc.add(value)
+            if (acc.size == size.value.value) {
+                emit(acc)
+                result = null
+            }
+        }
+        result?.let { emit(it) }
+    }
+}

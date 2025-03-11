@@ -1,38 +1,44 @@
-import com.mongodb.client.model.Filters
-import com.mongodb.housekeeping.model.CollectionConfig
 import com.mongodb.housekeeping.model.Config
-import com.mongodb.housekeeping.model.RateConfig
-import com.mongodb.housekeeping.model.WindowConfig
-import kotlinx.datetime.DayOfWeek
-import kotlinx.datetime.LocalTime
+import kotlinx.coroutines.flow.flow
+import org.bson.Document
+import org.bson.types.ObjectId
+import kotlin.random.Random
 
 
-val basicConfig: Config = Config(
-    housekeepingEnabled = false,
-    collections = listOf(
-        CollectionConfig(
-            namespace = "test.a",
-            criteria = Filters.gt("field", 5).toBsonDocument()
+val basicConfig: Config = Config.default
+
+private val status = listOf("OPEN", "CLOSED")
+
+fun createTestDataA(id: Any = ObjectId.get()) =
+    Document(
+        mapOf(
+            "_id" to id,
+            "field" to Random.nextInt(10),
+            "status" to status.random()
         )
-    ),
-    archiveEnabled = false,
-    rates = listOf(
-        RateConfig(
-            rate = 5,
-            criteria = listOf(
-                RateConfig.MetricThreshold(
-                    metric = "insert",
-                    min = 0,
-                    max = 100
-                )
-            )
+    )
+
+fun createTestDataB(id: Any = ObjectId.get()) =
+    Document(
+        mapOf(
+            "fk" to id,
+            "field" to Random.nextInt(10),
+            "status" to status.random()
         )
-    ),
-    windows = listOf(
-        WindowConfig(
-            from = LocalTime(0, 0, 0, 0),
-            to = LocalTime(5, 0, 0, 0),
-            days = listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
-        )
-    ),
-)
+    )
+
+fun testDataFlowA() = flow {
+    var id = 0
+    while (true) {
+        emit(createTestDataA(id))
+        id++
+    }
+}
+
+fun testDataFlowB() = flow {
+    var id = 0
+    while (true) {
+        emit(createTestDataB(id))
+        id++
+    }
+}

@@ -7,10 +7,8 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.mongodb.client.model.Filters
 import com.mongodb.housekeeping.model.Config
 import com.mongodb.kotlin.client.coroutine.MongoClient
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.count
-import kotlinx.coroutines.runBlocking
 import kotlin.time.Duration.Companion.seconds
 
 class App : SuspendingCliktCommand() {
@@ -31,16 +29,37 @@ class App : SuspendingCliktCommand() {
 
         val cfgState = configState(cfgCollection).withLogging(logger)
         val windowState = windowState(cfgState).withLogging(logger)
-        val serverStatus = serverStatusState(db, 10.seconds).withLogging(logger, includeStateChanges = false)
-        val opcounterState = opcounterState(serverStatus).withLogging(logger)
+        val serverStatusState = this.serverStatusState(db, 5.seconds).withLogging(logger, includeStateChanges = false)
+        val opcounterState = opcounterState(serverStatusState)
         val rateState = rateState(cfgState, opcounterState).withLogging(logger)
-        val hkEnabled = housekeepingEnabled(cfgState, windowState, rateState).withLogging(logger)
-        housekeepingState(hkEnabled, windowState, rateState, opcounterState).collect {
-            db.saveState(it)
+        val enabledState = housekeepingEnabled(cfgState, windowState, rateState).withLogging(logger)
+        val enabledAndCfgState = enabledAndCfgCombined(cfgState, enabledState)
+
+        var hkJob: Job? = null
+
+        launch {
+            enabledAndCfgState.collect { (collCfg, enabled) ->
+                if (hkJob.isRunning()) {
+                    logger.log("Stopping housekeeping job")
+                    hkJob?.cancel()
+                }
+                if (enabled.value) {
+                    logger.log("Starting housekeeping job")
+                    hkJob = launch {
+                        housekeepingJob(client, collCfg, rateState, logger)
+                    }
+                }
+            }
         }
 
+        // save state
+        housekeepingState(enabledState, windowState, rateState, opcounterState).collect {
+            db.saveState(it)
+        }
     }
 }
+
+fun Job?.isRunning() = this?.isActive == true
 
 suspend fun main(args: Array<String>) {
     App().main(args)
