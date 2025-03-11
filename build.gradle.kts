@@ -27,6 +27,16 @@ dependencies {
     testImplementation(libs.kotlin.test)
 }
 
+application {
+    mainClass.set("com.mongodb.housekeeping.AppKt")
+}
+
+distributions {
+    main {
+        distributionBaseName.set("mongo-housekeeping")
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
 }
