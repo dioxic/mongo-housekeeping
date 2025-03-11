@@ -40,7 +40,8 @@ suspend fun CoroutineScope.housekeepingJob(
                 .onEach { delay(1.seconds) }
                 .collect { docs ->
                     val ids = docs.map { it["_id"] }
-                    val count = collection.deleteMany(Filters.`in`("_id", ids)).deletedCount
+                    val filter = Filters.and(cfg.criteria, Filters.`in`("_id", ids))
+                    val count = collection.deleteMany(filter).deletedCount
                     println("deleted $count documents from ${cfg.namespace}")
                 }
             logger.log("Processing complete for ${cfg.namespace}")
