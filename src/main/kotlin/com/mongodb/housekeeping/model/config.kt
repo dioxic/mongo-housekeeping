@@ -17,10 +17,10 @@ import org.bson.BsonDocument
 @Serializable
 data class Config(
     val criteriaConfig: CriteriaConfig,
-    val archiveEnabled: Boolean,
+    val archiveEnabled: Boolean?,
     val housekeepingEnabled: Boolean,
     val rates: List<RateConfig>,
-    val windows: List<WindowConfig>? = null
+    val windows: List<WindowConfig>?
 ) {
     @SerialName("_id")
     val id: String = "CONFIG"
@@ -56,7 +56,7 @@ data class Config(
                     )
                 )
             ),
-            archiveEnabled = false,
+            archiveEnabled = null,
             rates = listOf(
                 RateConfig(
                     rate = 5,
