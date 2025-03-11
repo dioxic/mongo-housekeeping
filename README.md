@@ -4,6 +4,8 @@ This tool deletes data based on configurable criteria and at a configurable rate
 
 All **configuration**, **logging** and **status** are contained in MongoDB in the housekeeping database.
 
+Any changes to the configuration will be automatically picked up and applied - it is not required to restart the application.
+
 ## Features
 
 * configurable criteria for deletion
