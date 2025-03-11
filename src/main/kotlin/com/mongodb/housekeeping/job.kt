@@ -56,7 +56,7 @@ suspend fun CoroutineScope.housekeepingJob(
         val collection = client.getMongoCollection<Document>(cfg.namespace)
         val exPlan = collection.explainPlan(cfg.criteria)
 
-        if (exPlan.hasSupportingIndex(cfg.criteria)) {
+        if (exPlan.hasSupportingIndex()) {
             collection
                 .find(cfg.criteria)
                 .chunked(rate)
@@ -85,24 +85,10 @@ typealias ExPlan = Document
 suspend fun MongoCollection<Document>.explainPlan(criteria: BsonDocument): ExPlan =
     find(criteria).explain(ExplainVerbosity.QUERY_PLANNER)
 
-fun ExPlan.hasSupportingIndex(criteria: BsonDocument): Boolean =
+fun ExPlan.hasSupportingIndex(): Boolean =
     get<Document>("queryPlanner", Document::class.java)
         ?.get<Document>("winningPlan", Document::class.java)
         ?.getString("stage") != "COLLSCAN"
-
-suspend fun MongoCollection<Document>.hasSupportingIndex(criteria: BsonDocument): Boolean {
-    val queryPlan = find(criteria).explain(ExplainVerbosity.QUERY_PLANNER)
-    val isCollscan = queryPlan
-        .get<Document>("queryPlanner", Document::class.java)
-        ?.get<Document>("winningPlan", Document::class.java)
-        ?.getString("stage") == "COLLSCAN"
-
-//    val jws = JsonWriterSettings.builder().indent(true).build()
-//    println(queryPlan.toBsonDocument().toJson(jws))
-//    println("isCollscan = $isCollscan")
-
-    return !isCollscan
-}
 
 inline fun <reified T : Any> MongoClient.getMongoCollection(ns: String) =
     MongoNamespace(ns).let { ns ->
