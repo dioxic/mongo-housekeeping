@@ -42,7 +42,7 @@ suspend fun CoroutineScope.housekeepingJob(
                     val ids = docs.map { it["_id"] }
                     val filter = Filters.and(cfg.criteria, Filters.`in`("_id", ids))
                     val count = collection.deleteMany(filter).deletedCount
-                    println("deleted $count documents from ${cfg.namespace}")
+                    logger.log("deleted $count documents from ${cfg.namespace}")
                 }
             logger.log("Processing complete for ${cfg.namespace}")
         } else {
@@ -86,7 +86,7 @@ suspend fun CoroutineScope.housekeepingJob(
                         null
                     }?.also {
                         it.forEach { (collName, count) ->
-                            println("deleted $count documents from $collName")
+                            logger.log("deleted $count documents from $collName")
                         }
                     }
                 }
