@@ -8,6 +8,7 @@ import com.mongodb.client.model.Filters
 import com.mongodb.housekeeping.model.Config
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.count
 import kotlin.time.Duration.Companion.seconds
 
@@ -34,6 +35,7 @@ class App : SuspendingCliktCommand() {
         val rateState = rateState(cfgState, opcounterState).withLogging(logger)
         val enabledState = housekeepingEnabled(cfgState, windowState, rateState).withLogging(logger)
         val enabledAndCriteriaState = enabledAndCriteria(cfgState, enabledState)
+        val jobStatus = MutableStateFlow<String?>(null)
 
         var hkJob: Job? = null
 
@@ -50,6 +52,7 @@ class App : SuspendingCliktCommand() {
                             client = client,
                             criteria = criteriaCfg,
                             rate = rateState,
+                            jobStatus = jobStatus,
                             logger = logger
                         )
                     }
@@ -58,7 +61,13 @@ class App : SuspendingCliktCommand() {
         }
 
         // save state
-        housekeepingState(enabledState, windowState, rateState, opcounterState).collect {
+        housekeepingState(
+            enabled = enabledState,
+            windowState = windowState,
+            rateState = rateState,
+            jobStatus = jobStatus,
+            opcounterState = opcounterState
+        ).collect {
             db.saveState(it)
         }
     }

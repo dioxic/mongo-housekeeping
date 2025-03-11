@@ -95,6 +95,7 @@ suspend fun CoroutineScope.housekeepingState(
     enabled: StateFlow<Enabled>,
     windowState: StateFlow<Window>,
     rateState: StateFlow<Rate>,
+    jobStatus: StateFlow<String?>,
     opcounterState: StateFlow<ServerStatus.Opcounters>
 ): StateFlow<HousekeepingState> = enabled
     .combine(windowState) { enabled, window ->
@@ -110,6 +111,10 @@ suspend fun CoroutineScope.housekeepingState(
         hkState.copy(
             rate = rate.value,
             lastUpdated = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        )
+    }.combine(jobStatus) { hkState, jobStatus ->
+        hkState.copy(
+            status = jobStatus
         )
     }.stateIn(this)
 

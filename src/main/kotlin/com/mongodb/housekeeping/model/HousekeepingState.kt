@@ -9,6 +9,7 @@ data class HousekeepingState(
     val enabled: Boolean,
     val window: String?,
     val rate: Int,
+    val status: String?,
     val dbMetrics: ServerStatus.Opcounters?,
     @Contextual
     val lastUpdated: LocalDateTime?
@@ -19,7 +20,8 @@ data class HousekeepingState(
             window = null,
             rate = 0,
             dbMetrics = null,
-            lastUpdated = null
+            lastUpdated = null,
+            status = null
         )
     }
 }

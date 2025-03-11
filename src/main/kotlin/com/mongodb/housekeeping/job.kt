@@ -10,6 +10,7 @@ import com.mongodb.kotlin.client.coroutine.MongoCollection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -23,9 +24,11 @@ suspend fun CoroutineScope.housekeepingJob(
     client: MongoClient,
     criteria: CriteriaConfig,
     rate: StateFlow<Rate>,
+    jobStatus: MutableStateFlow<String?>,
     logger: HousekeepingLogger
 ) {
     criteria.simple.forEach { cfg ->
+        jobStatus.value = "Processing simple criteria for ${cfg.namespace}"
         logger.log("Processing simple criteria for ${cfg.namespace}")
         val collection = client.getMongoCollection<Document>(cfg.namespace)
         val exPlan = collection.explainPlan(cfg.criteria)
@@ -54,6 +57,7 @@ suspend fun CoroutineScope.housekeepingJob(
     }
 
     criteria.agg.forEach { cfg ->
+        jobStatus.value = "Processing agg criteria for ${cfg.db}.${cfg.rootCollection}"
         logger.log("Processing agg criteria for ${cfg.db}.${cfg.rootCollection}")
         val db = client.getDatabase(cfg.db)
         val rootCollection = db.getCollection<Document>(cfg.rootCollection)
@@ -97,6 +101,7 @@ suspend fun CoroutineScope.housekeepingJob(
             )
         }
     }
+    jobStatus.value = "Processing complete"
 }
 
 typealias ExPlan = Document
