@@ -31,7 +31,8 @@ class ModelTest {
         collA.drop()
         collB.drop()
         collA.createIndex(Indexes.ascending("field", "status"))
-        collB.createIndex(Indexes.ascending("fk"))
+        collB.createIndex(Indexes.ascending("fk", "status"))
+        collB.createIndex(Indexes.ascending("field", "status"))
 
         testDataFlowA()
             .take(1000)

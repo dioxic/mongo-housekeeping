@@ -3,56 +3,30 @@ package com.mongodb.housekeeping
 import com.mongodb.ExplainVerbosity
 import com.mongodb.MongoNamespace
 import com.mongodb.client.model.Filters
-import com.mongodb.housekeeping.model.CollectionConfig
-import com.mongodb.housekeeping.model.Config
-import com.mongodb.housekeeping.model.Enabled
+import com.mongodb.housekeeping.model.CriteriaConfig
 import com.mongodb.housekeeping.model.Rate
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import com.mongodb.kotlin.client.coroutine.MongoCollection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import org.bson.BsonDocument
 import org.bson.Document
 import org.bson.json.JsonWriterSettings
 import kotlin.time.Duration.Companion.seconds
 
-fun CoroutineScope.launchHousekeepingJob(
-    client: MongoClient,
-    cfgState: StateFlow<Config>,
-    rateState: StateFlow<Rate>,
-    enabledState: StateFlow<Enabled>,
-    logger: HousekeepingLogger
-) = launch {
-    var housekeepingJob: Job? = null
-    enabledState.collect { enabled ->
-        if (enabled.value) {
-            if (housekeepingJob.isRunning() == false) {
-                logger.log("Starting housekeeping job")
-                housekeepingJob = launch {
-                    housekeepingJob(client, cfgState.value.collections, rateState, logger)
-                }
-            }
-        } else if (housekeepingJob.isRunning()) {
-            logger.log("Stopping housekeeping job")
-            housekeepingJob?.cancel()
-        }
-    }
-}
-
 @OptIn(ExperimentalCoroutinesApi::class)
 suspend fun CoroutineScope.housekeepingJob(
     client: MongoClient,
-    collectionConfigs: List<CollectionConfig>,
+    criteria: CriteriaConfig,
     rate: StateFlow<Rate>,
     logger: HousekeepingLogger
 ) {
-    collectionConfigs.forEach { cfg ->
-        logger.log("Processing ${cfg.namespace}")
+    criteria.simple.forEach { cfg ->
+        logger.log("Processing simple criteria for ${cfg.namespace}")
         val collection = client.getMongoCollection<Document>(cfg.namespace)
         val exPlan = collection.explainPlan(cfg.criteria)
 
@@ -70,13 +44,58 @@ suspend fun CoroutineScope.housekeepingJob(
         } else {
             val jws = JsonWriterSettings.builder().indent(true).build()
             val exJson = exPlan.toJson(jws)
-            logger.log("""
+            logger.log(
+                """
                 |housekeeping terminated for ${cfg.namespace} - no index for criteria
                 |explain plan: $exJson
                 """.trimMargin()
             )
         }
+    }
 
+    criteria.agg.forEach { cfg ->
+        logger.log("Processing agg criteria for ${cfg.db}.${cfg.rootCollection}")
+        val db = client.getDatabase(cfg.db)
+        val rootCollection = db.getCollection<Document>(cfg.rootCollection)
+        val exPlan = rootCollection.explainPlan(cfg.aggCriteria)
+
+        if (exPlan.hasSupportingIndex()) {
+            rootCollection
+                .aggregate(cfg.aggCriteria)
+                .map { it.filterKeys { it != "_id" } }
+                .batchMerge(rate)
+                .onEach { delay(1.seconds) }
+                .collect { idMap ->
+                    val session = client.startSession()
+                    try {
+                        session.startTransaction()
+                        idMap.map { (coll, ids) ->
+                            val mdbCollection = db.getCollection<Document>(coll)
+                            coll to mdbCollection.deleteMany(session, Filters.`in`("_id", ids)).deletedCount
+                        }.also {
+                            session.commitTransaction()
+                        }
+                    } catch (e: Exception) {
+                        session.abortTransaction()
+                        logger.log("Transaction aborted due to ${e.message}")
+                        null
+                    }?.also {
+                        it.forEach { (collName, count) ->
+                            println("deleted $count documents from $collName")
+                        }
+                    }
+                }
+            logger.log("Processing complete for ${cfg.db}.${cfg.rootCollection} agg")
+        } else {
+            val jws = JsonWriterSettings.builder().indent(true).build()
+            val exJson = exPlan.toJson(jws)
+            logger.log(
+                """
+                |housekeeping terminated for ${cfg.db}.${cfg.rootCollection} - no index for criteria
+                |explain plan: $exJson
+                """.trimMargin()
+            )
+        }
     }
 }
 
@@ -84,6 +103,9 @@ typealias ExPlan = Document
 
 suspend fun MongoCollection<Document>.explainPlan(criteria: BsonDocument): ExPlan =
     find(criteria).explain(ExplainVerbosity.QUERY_PLANNER)
+
+suspend fun MongoCollection<Document>.explainPlan(criteria: List<BsonDocument>): ExPlan =
+    aggregate(criteria).explain(ExplainVerbosity.QUERY_PLANNER)
 
 fun ExPlan.hasSupportingIndex(): Boolean =
     get<Document>("queryPlanner", Document::class.java)

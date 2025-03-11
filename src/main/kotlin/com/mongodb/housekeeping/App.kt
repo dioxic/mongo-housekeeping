@@ -33,12 +33,12 @@ class App : SuspendingCliktCommand() {
         val opcounterState = opcounterState(serverStatusState)
         val rateState = rateState(cfgState, opcounterState).withLogging(logger)
         val enabledState = housekeepingEnabled(cfgState, windowState, rateState).withLogging(logger)
-        val enabledAndCfgState = enabledAndCfgCombined(cfgState, enabledState)
+        val enabledAndCriteriaState = enabledAndCriteria(cfgState, enabledState)
 
         var hkJob: Job? = null
 
         launch {
-            enabledAndCfgState.collect { (collCfg, enabled) ->
+            enabledAndCriteriaState.collect { (criteriaCfg, enabled) ->
                 if (hkJob.isRunning()) {
                     logger.log("Stopping housekeeping job")
                     hkJob?.cancel()
@@ -46,7 +46,12 @@ class App : SuspendingCliktCommand() {
                 if (enabled.value) {
                     logger.log("Starting housekeeping job")
                     hkJob = launch {
-                        housekeepingJob(client, collCfg, rateState, logger)
+                        housekeepingJob(
+                            client = client,
+                            criteria = criteriaCfg,
+                            rate = rateState,
+                            logger = logger
+                        )
                     }
                 }
             }

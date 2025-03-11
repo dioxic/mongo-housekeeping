@@ -81,14 +81,14 @@ suspend fun CoroutineScope.housekeepingEnabled(
         Enabled(enabled && rate.value > 0)
     }.stateIn(this)
 
-suspend fun CoroutineScope.enabledAndCfgCombined(
+suspend fun CoroutineScope.enabledAndCriteria(
     cfgState: StateFlow<Config>,
     enabledState: StateFlow<Enabled>
 ) = cfgState
-    .map { it.collections }
+    .map { it.criteriaConfig }
     .distinctUntilChanged()
-    .combine(enabledState) { collCfg, enabled ->
-        collCfg to enabled
+    .combine(enabledState) { criteria, enabled ->
+        criteria to enabled
     }.stateIn(this)
 
 suspend fun CoroutineScope.housekeepingState(
@@ -127,3 +127,30 @@ fun <T> Flow<T>.chunked(size: StateFlow<Rate>): Flow<List<T>> {
         result?.let { emit(it) }
     }
 }
+
+fun Flow<Map<String, Any?>>.batchMerge(size: StateFlow<Rate>): Flow<Map<String, Collection<Any>>> {
+    return flow {
+        var result: MutableMap<String, Set<Any>>? = null
+        var count = 1
+        collect { value ->
+            val acc = result ?: mutableMapOf<String, Set<Any>>().also { result = it }
+            value.filterValues { it != null }.forEach { (k, v) ->
+                val l = when (v) {
+                    is List<*> -> v.filterNotNull().toSet()
+                    else -> setOf(v!!)
+                }
+                acc.merge(k, l) { v1, v2 ->
+                    v1.plus(v2)
+                }
+            }
+            if (count == size.value.value) {
+                emit(acc)
+                result = null
+                count = 0
+            }
+            count++
+        }
+        result?.let { emit(it) }
+    }
+}
+
