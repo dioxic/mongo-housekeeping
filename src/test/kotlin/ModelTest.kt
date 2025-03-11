@@ -12,17 +12,6 @@ import kotlin.test.Test
 class ModelTest {
 
     @Test
-    fun writeConfig(): Unit = runBlocking {
-        val client = MongoClient.create()
-
-        client
-            .getDatabase("housekeeping")
-            .getCollection<Config>("config")
-            .insertOne(basicConfig)
-
-    }
-
-    @Test
     fun writeTestData() = runBlocking {
         val db = MongoClient.create().getDatabase("test")
         val collA = db.getCollection<Document>("a")
