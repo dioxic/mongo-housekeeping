@@ -2,6 +2,8 @@ package com.mongodb.housekeeping
 
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.command.main
+import com.github.ajalt.clikt.core.context
+import com.github.ajalt.clikt.output.MordantHelpFormatter
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.mongodb.client.model.Filters
@@ -13,6 +15,10 @@ import kotlinx.coroutines.flow.count
 import kotlin.time.Duration.Companion.seconds
 
 class App : SuspendingCliktCommand() {
+    init {
+        context { helpFormatter = { ctx -> MordantHelpFormatter(ctx, showDefaultValues = true) } }
+    }
+
     val mongoUri by option(help = "MongoDB connection string").default("mongodb://localhost:27017")
     val housekeepingDatabase by option("--db", help = "The housekeeping database").default("housekeeping")
 

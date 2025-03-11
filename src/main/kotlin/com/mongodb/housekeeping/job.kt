@@ -31,16 +31,16 @@ suspend fun CoroutineScope.housekeepingJob(
         jobStatus.value = "Processing simple criteria for ${cfg.namespace}"
         logger.log("Processing simple criteria for ${cfg.namespace}")
         val collection = client.getMongoCollection<Document>(cfg.namespace)
-        val exPlan = collection.explainPlan(cfg.criteria)
+        val exPlan = collection.explainPlan(cfg.query)
 
         if (exPlan.hasSupportingIndex()) {
             collection
-                .find(cfg.criteria)
+                .find(cfg.query)
                 .chunked(rate)
                 .onEach { delay(1.seconds) }
                 .collect { docs ->
                     val ids = docs.map { it["_id"] }
-                    val filter = Filters.and(cfg.criteria, Filters.`in`("_id", ids))
+                    val filter = Filters.and(cfg.query, Filters.`in`("_id", ids))
                     val count = collection.deleteMany(filter).deletedCount
                     logger.log("deleted $count documents from ${cfg.namespace}")
                 }
@@ -57,16 +57,16 @@ suspend fun CoroutineScope.housekeepingJob(
         }
     }
 
-    criteria.agg.forEach { cfg ->
+    criteria.pipeline.forEach { cfg ->
         jobStatus.value = "Processing agg criteria for ${cfg.db}.${cfg.rootCollection}"
         logger.log("Processing agg criteria for ${cfg.db}.${cfg.rootCollection}")
         val db = client.getDatabase(cfg.db)
         val rootCollection = db.getCollection<Document>(cfg.rootCollection)
-        val exPlan = rootCollection.explainPlan(cfg.aggCriteria)
+        val exPlan = rootCollection.explainPlan(cfg.query)
 
         if (exPlan.hasSupportingIndex()) {
             rootCollection
-                .aggregate(cfg.aggCriteria)
+                .aggregate(cfg.query)
                 .map { it.filterKeys { it != "_id" } }
                 .batchMerge(rate)
                 .onEach { delay(1.seconds) }

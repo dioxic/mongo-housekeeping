@@ -75,7 +75,7 @@ suspend fun CoroutineScope.housekeepingEnabled(
     rateState: StateFlow<Rate>
 ): StateFlow<Enabled> = cfgState
     .combine(windowState) { cfg, window ->
-        cfg.housekeepingEnabled && window.value
+        cfg.enabled && window.value
     }
     .combine(rateState) { enabled, rate ->
         Enabled(enabled && rate.value > 0)
@@ -85,7 +85,7 @@ suspend fun CoroutineScope.enabledAndCriteria(
     cfgState: StateFlow<Config>,
     enabledState: StateFlow<Enabled>
 ) = cfgState
-    .map { it.criteriaConfig }
+    .map { it.criteria }
     .distinctUntilChanged()
     .combine(enabledState) { criteria, enabled ->
         criteria to enabled

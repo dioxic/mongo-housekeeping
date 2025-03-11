@@ -16,9 +16,9 @@ import org.bson.BsonDocument
 
 @Serializable
 data class Config(
-    val criteriaConfig: CriteriaConfig,
-    val archiveEnabled: Boolean?,
-    val housekeepingEnabled: Boolean,
+    val criteria: CriteriaConfig,
+    val archive: Boolean?,
+    val enabled: Boolean,
     val rates: List<RateConfig>,
     val windows: List<WindowConfig>?
 ) {
@@ -27,23 +27,23 @@ data class Config(
 
     companion object {
         val default = Config(
-            housekeepingEnabled = false,
-            criteriaConfig = CriteriaConfig(
+            enabled = false,
+            criteria = CriteriaConfig(
                 simple = listOf(
                     SimpleCriteria(
                         namespace = "test.a",
-                        criteria = and(gt("field", 9), eq("status", "CLOSED")).toBsonDocument()
+                        query = and(gt("field", 9), eq("status", "CLOSED")).toBsonDocument()
                     ),
                     SimpleCriteria(
                         namespace = "test.b",
-                        criteria = and(gt("field", 8), eq("status", "CLOSED")).toBsonDocument()
+                        query = and(gt("field", 8), eq("status", "CLOSED")).toBsonDocument()
                     )
                 ),
-                agg = listOf(
+                pipeline = listOf(
                     AggCriteria(
                         db = "test",
                         rootCollection = "a",
-                        aggCriteria = listOf(
+                        query = listOf(
                             match(gt("field", 5)),
                             lookup("b", "_id", "fk", "b"),
                             project(
@@ -56,7 +56,7 @@ data class Config(
                     )
                 )
             ),
-            archiveEnabled = null,
+            archive = null,
             rates = listOf(
                 RateConfig(
                     rate = 5,
@@ -103,18 +103,18 @@ data class RateConfig(
 @Serializable
 data class CriteriaConfig(
     val simple: List<SimpleCriteria>,
-    val agg: List<AggCriteria>
+    val pipeline: List<AggCriteria>
 )
 
 @Serializable
 data class SimpleCriteria(
     val namespace: String,
-    @Contextual val criteria: BsonDocument
+    @Contextual val query: BsonDocument
 )
 
 @Serializable
 data class AggCriteria(
     val db: String,
     val rootCollection: String,
-    val aggCriteria: List<@Contextual BsonDocument>
+    val query: List<@Contextual BsonDocument>
 )
