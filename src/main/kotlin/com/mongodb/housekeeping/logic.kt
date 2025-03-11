@@ -5,8 +5,9 @@ import com.mongodb.housekeeping.model.ServerStatus
 import com.mongodb.housekeeping.model.WindowConfig
 import kotlinx.datetime.LocalDateTime
 
-fun List<RateConfig>.calculateRate(opcounters: ServerStatus.Opcounters, defaultRate: Int = 0) =
-    filter { rate -> rate.criteria.any { it.accept(opcounters) } }.minByOrNull { it.rate } ?: defaultRate
+fun List<RateConfig>.calculateRate(opcounters: ServerStatus.Opcounters, defaultRate: Int = 0): Int =
+    filter { rate -> rate.criteria.any { it.accept(opcounters) } }
+        .minOfOrNull { it.rate } ?: defaultRate
 
 fun RateConfig.MetricThreshold.accept(opcounters: ServerStatus.Opcounters): Boolean {
     val metric = opcounters.getByKey(metric)
