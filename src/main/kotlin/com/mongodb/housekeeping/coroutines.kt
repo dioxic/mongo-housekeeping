@@ -11,6 +11,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -29,11 +30,11 @@ suspend fun CoroutineScope.windowState(cfgState: StateFlow<Config>): StateFlow<W
     }.stateIn(this)
 }
 
-suspend fun CoroutineScope.serverStatusState(db: MongoDatabase) =
+suspend fun CoroutineScope.serverStatusState(db: MongoDatabase, refreshInterval: Duration) =
     flow {
         while (true) {
             emit(db.serverStatus())
-            delay(10.seconds)
+            delay(refreshInterval)
         }
     }.stateIn(this)
 
@@ -51,8 +52,7 @@ suspend fun CoroutineScope.opcounterState(serverStatusState: StateFlow<ServerSta
         lastTime = now
         lastOpcounters = ss.opcounters
     }
-}
-    .stateIn(this)
+}.stateIn(this)
 
 suspend fun CoroutineScope.configState(cfgCollection: MongoCollection<Config>) =
     cfgCollection
@@ -81,36 +81,24 @@ suspend fun CoroutineScope.housekeepingEnabled(
         Enabled(enabled && rate.value > 0)
     }.stateIn(this)
 
-//suspend fun CoroutineScope.updateState(
-//    enabled: StateFlow<Enabled>,
-//    windowState: StateFlow<Window>,
-//    rateState: StateFlow<Rate>
-//) {
-//    enabled
-//        .combine(windowState) { enabled, window ->
-//            enabled to window
-//        }
-//        .combine(rateState) { (enabled, window), rate ->
-//            HousekeepingState(
-//                enabled = enabled.value,
-//                window = window.toString(),
-//                rate = rate.value
-//            )
-//        }.stateIn(this)
-//}
-
 suspend fun CoroutineScope.housekeepingState(
     enabled: StateFlow<Enabled>,
     windowState: StateFlow<Window>,
-    rateState: StateFlow<Rate>
+    rateState: StateFlow<Rate>,
+    opcounterState: StateFlow<ServerStatus.Opcounters>
 ): StateFlow<HousekeepingState> = enabled
     .combine(windowState) { enabled, window ->
-        enabled to window
-    }
-    .combine(rateState) { (enabled, window), rate ->
-        HousekeepingState(
+        HousekeepingState.default.copy(
             enabled = enabled.value,
-            window = window.toString(),
-            rate = rate.value
+            window = window.toString()
+        )
+    }
+    .combine(opcounterState) { hkState, ocState ->
+        hkState.copy(dbMetrics = ocState)
+    }
+    .combine(rateState) { hkState, rate ->
+        hkState.copy(
+            rate = rate.value,
+            lastUpdated = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         )
     }.stateIn(this)

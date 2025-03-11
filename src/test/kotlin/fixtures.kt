@@ -21,7 +21,7 @@ val basicConfig: Config = Config(
             rate = 5,
             criteria = listOf(
                 RateConfig.MetricThreshold(
-                    metric = "inserts",
+                    metric = "insert",
                     min = 0,
                     max = 100
                 )

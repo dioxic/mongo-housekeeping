@@ -18,5 +18,8 @@ value class Enabled(val value: Boolean) {
         }
 }
 
+/**
+ * The housekeeping rate
+ */
 @JvmInline
 value class Rate(val value: Int)
